@@ -21,6 +21,10 @@ struct FocusView: View {
             HStack(spacing: 20) {
                 Button(action: toggleFocus) { Label(isRunning ? "Pause" : "Start Focus", systemImage: isRunning ? "pause.circle.fill" : "play.circle.fill").font(.title2).foregroundColor(.white).padding(.horizontal, 40).padding(.vertical, 16).background(isRunning ? Color.orange : Color.accentColor).cornerRadius(30) }.buttonStyle(.plain)
                 Button(action: resetFocus) { Image(systemName: "arrow.counterclockwise").font(.title2).foregroundColor(.secondary).frame(width: 56, height: 56).background(VisualEffectView(material: .popover, blendingMode: .withinWindow)).cornerRadius(28) }.buttonStyle(.plain).disabled(!isRunning && timeRemaining == focusDuration)
+                Button(action: { FocusLockManager.shared.lock(taskName: currentFocusTask) }) {
+                    Image(systemName: "lock.shield.fill").font(.title2).foregroundColor(.white).frame(width: 56, height: 56).background(.black.opacity(0.8)).cornerRadius(28)
+                        .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color.white.opacity(0.15), lineWidth: 0.5))
+                }.buttonStyle(.plain).help("Lock In — block everything")
             }
             Spacer(minLength: 100)
             HStack(spacing: 30) { AmbientToggle(title: "Sound", icon: "speaker.wave.2.fill", isOn: .constant(true)); AmbientToggle(title: "Distraction Free", icon: "eye.slash.fill", isOn: .constant(true)); AmbientToggle(title: "Ambient", icon: "cloud.rain.fill", isOn: .constant(false)) }.padding(.bottom, 40)
