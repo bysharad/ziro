@@ -92,7 +92,7 @@ struct PomodoroWidgetView: View {
     private func stopTimer() { timer?.invalidate(); timer = nil }
 
     private func completeSession() {
-        stopTimer(); NSSound.beep()
+        stopTimer(); playAlarm()
         switch mode {
         case .work:
             mode = .shortBreak; timeRemaining = shortBreakDuration
@@ -109,6 +109,16 @@ struct PomodoroWidgetView: View {
             mode = .shortBreak; timeRemaining = shortBreakDuration
         case .shortBreak, .longBreak:
             mode = .work; timeRemaining = workDuration
+        }
+    }
+
+    private func playAlarm() {
+        let names = ["Funk", "Blow", "Hero", "Basso", "Ping"]
+        for name in names {
+            if let sound = NSSound(named: name) {
+                sound.play()
+                return
+            }
         }
     }
 
