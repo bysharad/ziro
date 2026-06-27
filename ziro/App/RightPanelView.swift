@@ -6,7 +6,7 @@ struct RightPanelView: View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 10) {
                 ClockWidget(); WeatherWidget(); UpcomingTasksWidget(); HabitProgressWidget()
-                MusicControlsWidget(); CurrentGoalWidget(); ProgressRingWidget(); QuoteWidget()
+                CurrentGoalWidget(); ProgressRingWidget(); QuoteWidget()
             }
             .padding(12)
         }
@@ -106,27 +106,6 @@ struct HabitProgressWidget: View {
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-struct MusicControlsWidget: View {
-    @ObservedObject private var library = AnimeAudioLibrary.shared
-    var body: some View {
-        PanelCard {
-            HStack(spacing: 10) {
-                Image(systemName: library.isPlaying ? "speaker.wave.2.fill" : "music.note.list")
-                    .font(.title3).foregroundColor(.accentColor).frame(width: 32)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(library.currentTrack?.title ?? "Ambient").font(.system(.caption, weight: .medium)).foregroundColor(.primary).lineLimit(1)
-                    Text(library.isPlaying ? "Playing" : "Paused").font(.system(.caption2, weight: .light)).foregroundColor(.secondary)
-                }
-                Spacer()
-                Button(action: { library.togglePlayPause() }) {
-                    Image(systemName: library.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.title3).foregroundColor(.accentColor)
-                }.buttonStyle(.plain)
             }
         }
     }

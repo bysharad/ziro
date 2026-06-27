@@ -7,7 +7,7 @@ struct MainContentView: View {
             switch selectedItem {
             case .dashboard: DashboardView(); case .focus: FocusView(); case .tasks: TasksView()
             case .eisenhower: EisenhowerMatrixView(); case .calendar: CalendarViewWrapper(); case .notes: NotesView()
-            case .habits: HabitsView(); case .statistics: StatisticsView(); case .videos: VideosView(); case .music: MusicView(); case .settings: SettingsView()
+            case .habits: HabitsView(); case .statistics: StatisticsView(); case .videos: VideosView(); case .settings: SettingsView()
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(VisualEffectView().ignoresSafeArea())
     }

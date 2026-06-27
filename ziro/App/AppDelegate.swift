@@ -52,26 +52,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         videoItem.isEnabled = false
         menu.addItem(videoItem)
 
-        let audioLib = AnimeAudioLibrary.shared
-        if audioLib.tracks.isEmpty { audioLib.loadTracks() }
-        let currentTrack = audioLib.currentTrack?.title ?? (audioLib.tracks.count > 0 ? "\(audioLib.tracks.count) tracks" : "No music")
-        let musicItem = NSMenuItem(title: "🎵 \(currentTrack)", action: nil, keyEquivalent: "")
-        musicItem.isEnabled = false
-        menu.addItem(musicItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        let playLabel = audioLib.isPlaying ? "Pause Music" : "Play Music"
-        let playItem = NSMenuItem(title: playLabel, action: #selector(toggleMusic), keyEquivalent: "")
-        if audioLib.tracks.isEmpty { playItem.isEnabled = false }
-        menu.addItem(playItem)
-
-        let nextItem = NSMenuItem(title: "Next Track", action: #selector(nextTrack), keyEquivalent: "")
-        if audioLib.tracks.isEmpty { nextItem.isEnabled = false }
-        menu.addItem(nextItem)
-
-        menu.addItem(NSMenuItem.separator())
-
         let focusItem = NSMenuItem(title: "Start Focus Session", action: #selector(startFocus), keyEquivalent: "f")
         focusItem.keyEquivalentModifierMask = .command
         menu.addItem(focusItem)
@@ -81,8 +61,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem?.menu = menu
     }
 
-    @objc func toggleMusic() { AnimeAudioLibrary.shared.togglePlayPause(); updateStatusMenu() }
-    @objc func nextTrack() { AnimeAudioLibrary.shared.nextTrack(); updateStatusMenu() }
     @objc func startFocus() { NotificationCenter.default.post(name: .init("StartFocusSession"), object: nil) }
 
     @objc func toggleWindow() {

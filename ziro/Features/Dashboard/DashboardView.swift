@@ -2,7 +2,6 @@ import SwiftUI
 
 struct DashboardView: View {
     @State private var currentQuoteIndex = 0
-    @State private var audioStarted = false
     let quotes = [
         "Focus on being productive instead of busy.",
         "The only way to do great work is to love what you do.",
@@ -19,11 +18,7 @@ struct DashboardView: View {
                     .padding(.bottom, 8)
 
                 AnimeDisplayView()
-                    .frame(height: geo.size.height * 0.50)
-
-                MusicPlayerWidget()
-                    .frame(height: 40)
-                    .padding(.vertical, 6)
+                    .frame(height: geo.size.height * 0.55)
 
                 PomodoroWidgetView()
                     .frame(maxHeight: geo.size.height * 0.18)
@@ -32,14 +27,6 @@ struct DashboardView: View {
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            if !audioStarted, !AnimeAudioLibrary.shared.tracks.isEmpty {
-                audioStarted = true
-                if !AnimeAudioLibrary.shared.isPlaying {
-                    AnimeAudioLibrary.shared.playTrack(at: 0)
-                }
-            }
-        }
     }
 }
 

@@ -47,14 +47,14 @@ struct ContentView: View {
 enum SidebarItem: String, CaseIterable {
     case dashboard = "Dashboard"; case focus = "Focus"; case tasks = "Tasks"
     case eisenhower = "Eisenhower"; case calendar = "Calendar"; case notes = "Notes"
-    case habits = "Habits"; case statistics = "Statistics"; case videos = "Videos"; case music = "Music"; case settings = "Settings"
+    case habits = "Habits"; case statistics = "Statistics"; case videos = "Videos"; case settings = "Settings"
     var icon: String {
         switch self {
         case .dashboard: return "square.grid.2x2"; case .focus: return "circle.dotted.circle"
         case .tasks: return "checklist"; case .eisenhower: return "chart.bar"
         case .calendar: return "calendar"; case .notes: return "note.text"
         case .habits: return "repeat"; case .statistics: return "chart.line.uptrend.xyaxis"
-        case .videos: return "video.fill"; case .music: return "music.note.list"; case .settings: return "gear"
+        case .videos: return "video.fill"; case .settings: return "gear"
         }
     }
 }
