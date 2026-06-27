@@ -5,9 +5,9 @@ import AVFoundation
 
 let supportedAudioExtensions: Set<String> = ["mp3", "wav", "aac", "m4a", "flac", "ogg", "wma", "aiff", "mp2", "alac", "caf"]
 
-final class AnimeAudioLibrary: ObservableObject {
+final class AnimeAudioLibrary: NSObject, ObservableObject {
     static let shared = AnimeAudioLibrary()
-    private init() { loadTracks() }
+    override private init() { super.init(); loadTracks() }
 
     @Published var tracks: [AudioTrack] = []
     @Published var currentTrackIndex: Int = 0
