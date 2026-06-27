@@ -3,7 +3,7 @@ import SwiftUI
 import Combine
 import AVFoundation
 
-let supportedAudioExtensions: Set<String> = ["mp3", "wav", "aac", "m4a", "flac", "ogg", "wma", "aiff", "mp2", "alac"]
+let supportedAudioExtensions: Set<String> = ["mp3", "wav", "aac", "m4a", "flac", "ogg", "wma", "aiff", "mp2", "alac", "caf"]
 
 final class AnimeAudioLibrary: ObservableObject {
     static let shared = AnimeAudioLibrary()
@@ -17,11 +17,9 @@ final class AnimeAudioLibrary: ObservableObject {
     @Published var currentTime: TimeInterval = 0
     @Published var duration: TimeInterval = 0
 
-    private let player = AVPlayer()
-    private var timeObserver: Any?
-    private var endObserver: NSObjectProtocol?
-    private var statusObserver: NSKeyValueObservation?
-    private var readyToPlay = false
+    private var audioPlayer: AVAudioPlayer?
+    private var timeTimer: Timer?
+    private var hasLoaded = false
 
     var currentTrack: AudioTrack? {
         guard tracks.indices.contains(currentTrackIndex) else { return nil }
@@ -29,12 +27,18 @@ final class AnimeAudioLibrary: ObservableObject {
     }
 
     func loadTracks() {
+        if !hasLoaded { hasLoaded = true; scanTracksDirectory() }
+    }
+
+    func reloadTracks() { scanTracksDirectory() }
+
+    private func scanTracksDirectory() {
         guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         let dir = documents.appendingPathComponent("ziro/Music")
         guard FileManager.default.fileExists(atPath: dir.path) else { return }
         let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
         for file in files where supportedAudioExtensions.contains(file.pathExtension.lowercased()) {
-            if tracks.contains(where: { $0.fileURL == file }) { continue }
+            if tracks.contains(where: { $0.fileURL?.path == file.path }) { continue }
             let title = file.deletingPathExtension().lastPathComponent
                 .replacingOccurrences(of: "_", with: " ")
                 .replacingOccurrences(of: "-", with: " ")
@@ -62,72 +66,91 @@ final class AnimeAudioLibrary: ObservableObject {
     func removeTrack(_ track: AudioTrack) {
         guard let fileURL = track.fileURL else { return }
         try? FileManager.default.removeItem(at: fileURL)
-        if currentTrack?.id == track.id { cleanUp(); resetState() }
+        if currentTrack?.id == track.id { stopAndReset() }
         tracks.removeAll { $0.id == track.id }
     }
 
     func playTrack(at index: Int) {
         guard tracks.indices.contains(index) else { return }
-        cleanUp()
+        stopAndReset()
         currentTrackIndex = index
         guard let url = tracks[index].fileURL else { return }
         guard FileManager.default.fileExists(atPath: url.path) else { return }
 
-        readyToPlay = false
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            audioPlayer = player
+            player.delegate = self
+            player.volume = volume
+            player.enableRate = true
+            player.rate = playbackRate
+            player.numberOfLoops = 0
+            player.prepareToPlay()
+
+            duration = player.duration
+            currentTime = 0
+
+            if player.play() {
+                isPlaying = true
+                startTimeTimer()
+            } else {
+                print("AVAudioPlayer.play() returned false for \(url.lastPathComponent)")
+                isPlaying = false
+            }
+        } catch {
+            print("AVAudioPlayer init failed for \(url.lastPathComponent): \(error)")
+            fallbackPlay(url: url)
+        }
+    }
+
+    private func fallbackPlay(url: URL) {
         let asset = AVURLAsset(url: url)
         let item = AVPlayerItem(asset: asset)
-        player.replaceCurrentItem(with: item)
+        let player = AVPlayer(playerItem: item)
         player.volume = volume
         player.actionAtItemEnd = .pause
+        fallbackPlayer = player
 
-        statusObserver = item.observe(\.status, options: [.new, .initial]) { [weak self] item, _ in
-            guard let self = self else { return }
-            switch item.status {
-            case .readyToPlay:
-                self.readyToPlay = true
-                self.player.play()
-                self.player.rate = self.playbackRate
-                self.isPlaying = true
-                if item.duration.isNumeric {
-                    self.duration = CMTimeGetSeconds(item.duration)
-                }
-            case .failed:
-                print("AVPlayerItem failed: \(item.error?.localizedDescription ?? "unknown")")
-                self.isPlaying = false
-            default:
-                break
-            }
-        }
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(fallbackDidEnd),
+            name: .AVPlayerItemDidPlayToEndTime, object: item
+        )
 
-        endObserver = NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: item,
-            queue: .main
-        ) { [weak self] _ in
-            self?.nextTrack()
-        }
-
-        timeObserver = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 0.25, preferredTimescale: 600),
-            queue: .main
-        ) { [weak self] time in
+        player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main) { [weak self] time in
             guard let self = self else { return }
             self.currentTime = CMTimeGetSeconds(time)
-            if let dur = self.player.currentItem?.duration, dur.isNumeric {
+            if let dur = self.fallbackPlayer?.currentItem?.duration, dur.isNumeric {
                 self.duration = CMTimeGetSeconds(dur)
             }
         }
 
-        currentTime = 0
-        duration = 0
+        player.play()
+        player.rate = playbackRate
+        isPlaying = true
     }
 
+    private var fallbackPlayer: AVPlayer?
+
+    @objc private func fallbackDidEnd() { nextTrack() }
+
     func togglePlayPause() {
-        if currentTrack != nil {
+        if let player = audioPlayer {
             if isPlaying {
                 player.pause()
                 isPlaying = false
-            } else if readyToPlay || player.currentItem?.status == .readyToPlay {
+                stopTimeTimer()
+            } else {
+                player.rate = playbackRate
+                if player.play() {
+                    isPlaying = true
+                    startTimeTimer()
+                }
+            }
+        } else if let player = fallbackPlayer {
+            if isPlaying {
+                player.pause()
+                isPlaying = false
+            } else {
                 player.rate = playbackRate
                 player.play()
                 isPlaying = true
@@ -149,37 +172,57 @@ final class AnimeAudioLibrary: ObservableObject {
 
     func setRate(_ rate: Float) {
         playbackRate = rate
-        if isPlaying { player.rate = rate }
+        if let player = audioPlayer, isPlaying {
+            player.rate = rate
+        } else if let player = fallbackPlayer, isPlaying {
+            player.rate = rate
+        }
     }
 
     func setVolume(_ vol: Float) {
         volume = vol
-        player.volume = vol
+        audioPlayer?.volume = vol
+        fallbackPlayer?.volume = vol
     }
 
     func seek(to time: TimeInterval) {
-        player.seek(to: CMTime(seconds: time, preferredTimescale: 600))
-        currentTime = time
-    }
-
-    private func cleanUp() {
-        statusObserver?.invalidate()
-        statusObserver = nil
-        if let observer = timeObserver {
-            player.removeTimeObserver(observer)
-            timeObserver = nil
-        }
-        if let obs = endObserver {
-            NotificationCenter.default.removeObserver(obs)
-            endObserver = nil
+        if let player = audioPlayer {
+            player.currentTime = time
+            currentTime = time
+        } else if let player = fallbackPlayer {
+            player.seek(to: CMTime(seconds: time, preferredTimescale: 600))
+            currentTime = time
         }
     }
 
-    private func resetState() {
+    private func startTimeTimer() {
+        stopTimeTimer()
+        timeTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self = self, let player = self.audioPlayer, player.isPlaying else { return }
+            self.currentTime = player.currentTime
+        }
+    }
+
+    private func stopTimeTimer() {
+        timeTimer?.invalidate()
+        timeTimer = nil
+    }
+
+    private func stopAndReset() {
+        audioPlayer?.stop()
+        audioPlayer = nil
+        fallbackPlayer?.pause()
+        fallbackPlayer = nil
+        stopTimeTimer()
         isPlaying = false
         currentTime = 0
         duration = 0
-        readyToPlay = false
+    }
+}
+
+extension AnimeAudioLibrary: AVAudioPlayerDelegate {
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        if flag { nextTrack() }
     }
 }
 
